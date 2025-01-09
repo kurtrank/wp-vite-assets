@@ -26,7 +26,6 @@ class WP_Vite_Assets {
 		string $root_dir,
 		string $base_url,
 		string $manifest_file = 'dist/.vite/manifest.json',
-		mixed $dev_url = false,
 	) {
 		$this->prefix = $prefix;
 
@@ -34,21 +33,12 @@ class WP_Vite_Assets {
 
 		$env_file = file_get_contents( $this->root_dir . '.env.json' );
 
-		$_dev_url_set_via_env = false;
-		if ( $env_file ) {
-			$env_args = json_decode( $env_file, true );
+		$env_args = $env_file ? json_decode( $env_file, true ) : false;
 
-			$host = $env_args['vite']['host'] ?? 'localhost';
-			$port = $env_args['vite']['port'] ?? 5173;
+		$host = $env_args['vite']['host'] ?? 'localhost';
+		$port = $env_args['vite']['port'] ?? 5173;
 
-			$_dev_url_set_via_env = true;
-
-			$this->dev_url = "http://{$host}:{$port}/";
-		}
-
-		if ( ! $_dev_url_set_via_env ) {
-			$this->dev_url = trailingslashit( $dev_url ? $dev_url : 'http://localhost:5173' );
-		}
+		$this->dev_url = "http://{$host}:{$port}/";
 
 		$this->base_url = trailingslashit( $base_url );
 
