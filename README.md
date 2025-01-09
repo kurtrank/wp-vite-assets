@@ -107,3 +107,4 @@ $assets->enqueue( 'src/main.js' );
 - https://vite.dev/guide/backend-integration.html
 - https://gist.github.com/chrispage1/06ac44ac3c01ab0454a935d50b8c9282
 - https://github.com/idleberg/php-wordpress-vite-assets
+- https://make.wordpress.org/core/2024/03/04/script-modules-in-6-5/
