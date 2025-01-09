@@ -16,20 +16,45 @@ class WP_Vite_Assets {
 	private bool $is_dev = false;
 
 	private ?array $manifest;
+	private string $root_dir;
 	public string $base_url;
 	public string $dev_url;
 	public string $prefix;
 
-	public function __construct( string $prefix, string $manifest_file, string $base_url, string $dev_url ) {
+	public function __construct(
+		string $prefix,
+		string $root_dir,
+		string $base_url,
+		string $manifest_file = 'dist/.vite/manifest.json',
+		mixed $dev_url = false,
+	) {
 		$this->prefix = $prefix;
 
-		$this->dev_url = trailingslashit( $dev_url );
+		$this->root_dir = trailingslashit( $root_dir );
+
+		$env_file = file_get_contents( $this->root_dir . '.env.json' );
+
+		$_dev_url_set_via_env = false;
+		if ( $env_file ) {
+			$env_args = json_decode( $env_file, true );
+
+			$host = $env_args['vite']['host'] ?? 'localhost';
+			$port = $env_args['vite']['port'] ?? 5173;
+
+			$_dev_url_set_via_env = true;
+
+			$this->dev_url = "http://{$host}:{$port}/";
+		}
+
+		if ( ! $_dev_url_set_via_env ) {
+			$this->dev_url = trailingslashit( $dev_url ? $dev_url : 'http://localhost:5173' );
+		}
 
 		$this->base_url = trailingslashit( $base_url );
 
 		$this->is_dev = $this->check_is_dev();
 
-		$this->manifest = $this->load_manifest( $manifest_file );
+		$this->manifest = $this->load_manifest( $this->root_dir . $manifest_file );
 
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
@@ -91,9 +116,9 @@ class WP_Vite_Assets {
 
 		$url = $this->is_dev ? $this->dev_url : $this->base_url;
 
-		$data = $this->manifest[ $name ];
+		$data = $this->manifest[ $name ] ?? false;
 
-		$handle = $args['handle'] ?? $data['name'];
+		$handle = $args['handle'] ?? $data['name'] ?? $this->get_handle_from_path( $name, 'js' );
 
 		$external_deps = $args['deps'] ?? array();
 
@@ -150,11 +175,15 @@ class WP_Vite_Assets {
 
 		$url = $this->is_dev ? $this->dev_url : $this->base_url;
 
-		$data = $this->manifest[ $name ];
+		$data = $this->manifest[ $name ] ?? false;
+
+		if ( ! $this->is_dev && ! $data ) {
+			return;
+		}
 
 		$path = $this->is_dev ? $name : $data['file'];
 
-		$handle = $args['handle'] ?? $data['name'];
+		$handle = $args['handle'] ?? $data['name'] ?? $this->get_handle_from_path( $name, 'js' );
 
 		$external_deps = $args['deps'] ?? array();
 
@@ -165,7 +194,11 @@ class WP_Vite_Assets {
 	public function enqueue_style( $name, $args = array() ) {
 		$url = $this->is_dev ? $this->dev_url : $this->base_url;
 
-		$data = $this->manifest[ $name ];
+		$data = $this->manifest[ $name ] ?? false;
+
+		if ( ! $this->is_dev && ! $data ) {
+			return;
+		}
 
 		$path = $this->is_dev ? $name : $data['file'];
 
