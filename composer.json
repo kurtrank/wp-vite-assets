@@ -1,0 +1,15 @@
+{
+	"name": "kurtrank/wp-vite-assets",
+	"version": "1.0.0",
+	"authors": [
+		{
+			"name": "Kurt Rank"
+		}
+	],
+	"homepage": "https://github.com/kurtrank/wp-vite-assets",
+	"autoload": {
+		"classmap": [
+			"src/"
+		]
+	}
+}
