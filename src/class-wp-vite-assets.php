@@ -11,7 +11,9 @@ use function wp_enqueue_style;
 use function wp_parse_args;
 
 class WP_Vite_Assets {
-	private array $enqueued_entries = array();
+	private array $entries_to_enqueue = array();
+
+	private array $wp_registered_items = array();
 
 	private bool $is_dev = false;
 
@@ -85,7 +87,7 @@ class WP_Vite_Assets {
 			wp_enqueue_script_module( "{$this->prefix}/vite-dev", "{$this->dev_url}@vite/client", array(), null );
 		}
 
-		foreach ( $this->enqueued_entries as $path => $args ) {
+		foreach ( $this->entries_to_enqueue as $path => $args ) {
 
 			if ( preg_match( '/\.js$/', $path ) ) {
 				// TODO: check if enqueue as non-module
@@ -112,6 +114,12 @@ class WP_Vite_Assets {
 
 		$external_deps = $args['deps'] ?? array();
 
+		$ns_handle = "{$this->prefix}/{$handle}";
+
+		// keep track internally of which items registered in wp to
+		// prevent circular dependendencies infinitely enqueing
+		$this->wp_registered_items[ $name ] = $ns_handle;
+
 		if ( $this->is_dev && $is_entry ) {
 			// only worry about top level modules
 			wp_enqueue_script_module( "{$this->prefix}/{$handle}", "{$url}{$name}", $external_deps, null );
@@ -126,16 +134,22 @@ class WP_Vite_Assets {
 
 		if ( isset( $data['imports'] ) ) {
 			foreach ( $data['imports'] as $import ) {
-				$deps[] = $this->enqueue_module_with_deps( $import );
+
+				if ( ! isset( $this->wp_registered_items[ $import ] ) ) {
+					$deps[] = $this->enqueue_module_with_deps( $import );
+				}
 			}
 		}
 
 		if ( isset( $data['dynamicImports'] ) ) {
 			foreach ( $data['dynamicImports'] as $import ) {
-				$deps[] = array(
-					'id'     => $this->enqueue_module_with_deps( $import ),
-					'import' => 'dynamic',
-				);
+
+				if ( ! isset( $this->wp_registered_items[ $import ] ) ) {
+					$deps[] = array(
+						'id'     => $this->enqueue_module_with_deps( $import ),
+						'import' => 'dynamic',
+					);
+				}
 			}
 		}
 
@@ -143,8 +157,6 @@ class WP_Vite_Assets {
 			...$deps,
 			...$external_deps,
 		);
-
-		$ns_handle = "{$this->prefix}/{$handle}";
 
 		if ( isset( $data['css'] ) ) {
 			foreach ( $data['css'] as $k => $file ) {
@@ -223,6 +235,6 @@ class WP_Vite_Assets {
 			)
 		);
 
-		$this->enqueued_entries[ $entry_file_path ] = $args;
+		$this->entries_to_enqueue[ $entry_file_path ] = $args;
 	}
 }
